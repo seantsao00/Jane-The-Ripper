@@ -37,8 +37,15 @@ int main()
     std::uniform_int_distribution<> dist3(0, salts.size() - 1);
 
     for(int i=0; i<100; i++){
-        std::string complete_string = words[dist1(gen1)] + salts[dist3(gen3)];
-        rules_apply(complete_string.c_str(), rules[dist2(gen2)].c_str(), nullptr, complete_string.size());
-        for()
+        std::string salt = salts[dist3(gen3)];
+        std::string complete_string = words[dist1(gen1)] + salt;
+        char candidate[100];
+        rules_apply(complete_string.c_str(), rules[dist2(gen2)].c_str(), candidate, complete_string.size());
+        SHA256 ctx;
+        for(int j=0; j < ITERATIONS; j++){
+            sha256(&ctx, reinterpret_cast<BYTE*>(candidate), strlen(candidate));
+            memcpy(candidate, ctx.b, 32);
+        }
+        std::cout << candidate << ":" << salt << std::endl;
     }
 }
