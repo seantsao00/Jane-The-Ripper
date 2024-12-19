@@ -34,7 +34,7 @@ __global__ void cracker_kernel(char* words, int words_idx, char* hash, char* rul
         for (int i = 0; i < rules_num; i++) {
             if ((i << i) & rule_idx) {
                 memcpy(rule, rules + i * 100, 100);
-                strncpy(tmp, candidate, 100);
+                my_strncpy(tmp, candidate, 100);
                 rules_apply_gpu(tmp, rule, candidate,
                                 word_lengths_pre[block_idx + 1] - word_lengths_pre[block_idx]);
             }
@@ -42,14 +42,14 @@ __global__ void cracker_kernel(char* words, int words_idx, char* hash, char* rul
         // candidate += salt;
         my_strcat(candidate, salt);
         SHA256 ctx;
-        char* tmp = new char[100];
-        strcpy(tmp, candidate);
+        char* tmp2 = new char[100];
+        my_strcpy(tmp2, candidate);
         for (int i = 0; i < ITERATIONS; i++) {
-            sha256(&ctx, reinterpret_cast<BYTE*>(tmp), strlen(tmp));
-            tmp = reinterpret_cast<char*>(ctx.b);
+            sha256(&ctx, reinterpret_cast<BYTE*>(tmp2), my_strlen(tmp2));
+            tmp2 = reinterpret_cast<char*>(ctx.b);
         }
-        if (!strcmp(reinterpret_cast<char*>(ctx.b), hash)) {
-            memcpy(answer, candidate, strlen(candidate));
+        if (!my_strcmp(reinterpret_cast<char*>(ctx.b), hash)) {
+            memcpy(answer, candidate, my_strlen(candidate));
         }
         delete[] tmp;
         delete[] candidate;

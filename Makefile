@@ -5,15 +5,24 @@ SRC_DIR = src
 BUILD_DIR = build
 
 SRC = $(wildcard $(SRC_DIR)/*.cpp)
+SRC := $(filter-out $(SRC_DIR)/main.cpp, $(SRC))
+SRC := $(filter-out $(SRC_DIR)/testGen.cpp, $(SRC))
 OBJ = $(SRC:$(SRC_DIR)/%.cpp=$(BUILD_DIR)/%.o)
 
-TARGET = jane
 
-all: $(TARGET)
+all: jane
 
-$(TARGET): $(SRC)
+jane: $(SRC_DIR)/main.cpp $(SRC)
 	@echo "Compiling $@"
 	$(HIPCC) $(HIPCC_FLAGS) $^ -o $@
+
+testGen: $(SRC_DIR)/testGen.cpp $(SRC)
+	@echo "Compiling $@"
+	$(HIPCC) $(HIPCC_FLAGS) $^ -o $@
+
+# $(TARGET): $(SRC)
+# 	@echo "Compiling $@"
+# 	$(HIPCC) $(HIPCC_FLAGS) $^ -o $@
 
 # $(TARGET): $(OBJ)
 # 	@echo "Linking $@"
