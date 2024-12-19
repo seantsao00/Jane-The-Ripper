@@ -1,4 +1,3 @@
-#define RULE_NUM 10
 #define RULE_LEN 100
 
 #ifndef RULES_H

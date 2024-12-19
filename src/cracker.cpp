@@ -11,7 +11,7 @@
 #include "sha256.h"
 
 #define THREADS_PER_BLOCK 256
-#define BLOCKS_PER_GRID 256
+#define BLOCKS_PER_GRID 2048
 #define ITERATIONS 100
 
 __global__ void cracker_kernel(char* words, int words_idx, char* hash, 
@@ -31,7 +31,7 @@ __global__ void cracker_kernel(char* words, int words_idx, char* hash,
     for (int rule_idx = thread_idx; rule_idx < (1 << rules_num); rule_idx += block_dim) {
         char* candidate = new char[100];
         candidate = word;
-        for (int = 0; i < RULE_NUM; i++){
+        for (int = 0; i < rules_num; i++){
             if((i << i) & rule_idx){
                 memcpy(rule, rules + i * 100, 100);
                 rules_apply_gpu(word, rule, candidate, word_lengths_pre[block_idx + 1] - word_lengths_pre[block_idx]);
@@ -54,11 +54,12 @@ __global__ void cracker_kernel(char* words, int words_idx, char* hash,
     delete[] word;
 }
 
-void launch_cracker(std::string hashes_filename, std::string& wordlist_filename,
-                    std::vector<std::string>& rules) {
+void launch_cracker(std::string& hashes_filename, std::string& wordlist_filename, std::string& rules_filename) {
     std::ifstream hashes_file(hashes_filename);
     std::ifstream wordlist_file(wordlist_filename);
+    std::ifstream rules_file(rules_rilename);
 
+    // Read hashes
     std::vector<std::string> hashes;
     std::vector<int> hash_lengths;
     std::string hash;
@@ -67,6 +68,7 @@ void launch_cracker(std::string hashes_filename, std::string& wordlist_filename,
         hash_lengths.push_back(hash.size());
     }
 
+    // Read wordlist
     std::vector<std::string> words;
     std::vector<int> word_lengths;
     std::vector<int> word_lengths_pre;
@@ -78,7 +80,14 @@ void launch_cracker(std::string hashes_filename, std::string& wordlist_filename,
         word_lengths_pre.push_back(word_lengths_pre.back() + word.size());
     }
 
-    int rules_total_len = RULE_LEN * RULE_NUM
+    // Read rules
+    std::vector<std::string>& rules;
+    while(std::getline(rules_file, word)){
+        word.resize(RULE_LEN, '\0');
+        rules.push_back(word);
+    }
+
+    int rules_total_len = RULE_LEN * rules.size();
 
     char* words_ptr = string_vector_to_char_array(words);
     char* rules_ptr = string_vector_to_char_array(rules);
@@ -87,10 +96,16 @@ void launch_cracker(std::string hashes_filename, std::string& wordlist_filename,
     int words_total_len = word_lengths_pre.back();
     int words_num = word_lengths_pre.size() - 1;
 
+    char* salt;
+
+    salt = new char[100];
+    strcpy(salt, "salt");
+
     char* d_words;
     char* d_hash;
     char* d_rules;
     char* d_answer;
+    char* d_salt;
     int* d_word_lengths_pre;
     int* d_hash_lengths;
 
@@ -100,6 +115,7 @@ void launch_cracker(std::string hashes_filename, std::string& wordlist_filename,
     hipMalloc(&d_word_lengths_pre, word_lengths_pre.size() * sizeof(int));
     hipMalloc(&d_hash_lengths, hash_lengths.size() * sizeof(int));
     hipMalloc(&d_answer, 100 * sizeof(char));
+    hipMalloc(&d_salt, 100 * sizeof(char));
 
     for(hash: hashes){
         hipMemcpy(d_words, words_ptr, words_total_len * sizeof(char), hipMemcpyHostToDevice);
@@ -110,12 +126,13 @@ void launch_cracker(std::string hashes_filename, std::string& wordlist_filename,
         hipMemcpy(d_hash_lengths, hash_lengths.data(), hash_lengths.size() * sizeof(int),
                 hipMemcpyHostToDevice);
         hipMemcpy(d_answer, answer_ptr, 100 * sizeof(char), hipMemcpyHostToDevice);
+        hipMemcpy(d_salt, salt, 100 * sizeof(char), hipMemcpyHostToDevice);
 
         int words_idx = 0;
         while(words_idx < words_num){
             hipLaunchKernelGGL(cracker_kernel, dim3(BLOCKS_PER_GRID), dim3(THREADS_PER_BLOCK), 0, 0,
-                            d_words, words_idx, d_hash, d_rules, RULE_NUM,
-                            d_word_lengths_pre, d_answer, "salt");
+                            d_words, words_idx, d_hash, d_rules, rules.size(),
+                            d_word_lengths_pre, d_answer, d_salt);
             hipMemcpy(answer_ptr, d_answer, 100 * sizeof(char), hipMemcpyDeviceToHost);
             if (answer_ptr[0] != '\0') {
                 std::cout << "Found password: " << answer_ptr << std::endl;
