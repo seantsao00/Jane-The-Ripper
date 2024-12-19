@@ -10,10 +10,6 @@
 #include "rules.h"
 #include "sha256.h"
 
-#define THREADS_PER_BLOCK 256
-#define BLOCKS_PER_GRID 2048
-#define ITERATIONS 100
-
 __global__ void cracker_kernel(char* words, int words_idx, char* hash, 
                                char* rules, int rules_num, int* word_lengths_pre,
                                char* answer, char* salt) {
@@ -34,7 +30,7 @@ __global__ void cracker_kernel(char* words, int words_idx, char* hash,
         for (int = 0; i < rules_num; i++){
             if((i << i) & rule_idx){
                 memcpy(rule, rules + i * 100, 100);
-                rules_apply_gpu(word, rule, candidate, word_lengths_pre[block_idx + 1] - word_lengths_pre[block_idx]);
+                rules_apply(word, rule, candidate, word_lengths_pre[block_idx + 1] - word_lengths_pre[block_idx]);
             }
         }
         candidate += salt;
@@ -59,13 +55,18 @@ void launch_cracker(std::string& hashes_filename, std::string& wordlist_filename
     std::ifstream wordlist_file(wordlist_filename);
     std::ifstream rules_file(rules_rilename);
 
-    // Read hashes
-    std::vector<std::string> hashes;
-    std::vector<int> hash_lengths;
-    std::string hash;
-    while (std::getline(hashes_file, hash)) {
-        hashes.push_back(hash);
-        hash_lengths.push_back(hash.size());
+    // Read hashes and salt
+    std::vector<std::pair<std::string, std::string>> hashes_and_salts;
+    std::string line;
+    while (std::getline(hashes_file, line)) {
+        size_t colon_pos = line.find(':');
+        if (colon_pos != std::string::npos) {
+            std::string hash = line.substr(0, colon_pos);
+            std::string salt = line.substr(colon_pos + 1);
+            hashes_and_salts.emplace_back(hash, salt);
+        } else {
+            std::cerr << "Invalid line format: " << line << std::endl;
+        }
     }
 
     // Read wordlist
@@ -96,34 +97,27 @@ void launch_cracker(std::string& hashes_filename, std::string& wordlist_filename
     int words_total_len = word_lengths_pre.back();
     int words_num = word_lengths_pre.size() - 1;
 
-    char* salt;
-
-    salt = new char[100];
-    strcpy(salt, "salt");
-
     char* d_words;
     char* d_hash;
     char* d_rules;
     char* d_answer;
     char* d_salt;
     int* d_word_lengths_pre;
-    int* d_hash_lengths;
 
     hipMalloc(&d_words, words_total_len * sizeof(char));
     hipMalloc(&d_hash, 100 * sizeof(char));
     hipMalloc(&d_rules, rules_total_len * sizeof(char));
     hipMalloc(&d_word_lengths_pre, word_lengths_pre.size() * sizeof(int));
-    hipMalloc(&d_hash_lengths, hash_lengths.size() * sizeof(int));
     hipMalloc(&d_answer, 100 * sizeof(char));
     hipMalloc(&d_salt, 100 * sizeof(char));
 
-    for(hash: hashes){
+    for(pwd: hashes_and_salts){
+        std::string hash = pwd.first;
+        std::string salt = pwd.second;
         hipMemcpy(d_words, words_ptr, words_total_len * sizeof(char), hipMemcpyHostToDevice);
         hipMemcpy(d_hash, hash.data(), hash.size() * sizeof(char), hipMemcpyHostToDevice);
         hipMemcpy(d_rules, rules_ptr, rules_total_len * sizeof(char), hipMemcpyHostToDevice);
         hipMemcpy(d_word_lengths_pre, word_lengths_pre.data(), word_lengths_pre.size() * sizeof(int),
-                hipMemcpyHostToDevice);
-        hipMemcpy(d_hash_lengths, hash_lengths.data(), hash_lengths.size() * sizeof(int),
                 hipMemcpyHostToDevice);
         hipMemcpy(d_answer, answer_ptr, 100 * sizeof(char), hipMemcpyHostToDevice);
         hipMemcpy(d_salt, salt, 100 * sizeof(char), hipMemcpyHostToDevice);

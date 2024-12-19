@@ -11,7 +11,7 @@ bool strprefix(const char* str, const char* prefix) {
     return strncmp(prefix, str, strlen(prefix)) == 0;
 }
 
-__device__ void rules_apply_gpu(const char* word, const char* rule, char* candidate, int word_len) {
+__host__ __device__ void rules_apply(const char* word, const char* rule, char* candidate, int word_len) {
     strncpy(candidate, word, max_candidate_len - 1);
     candidate[max_candidate_len - 1] = '\0';
     int candidate_len = word_len;
