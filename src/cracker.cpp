@@ -26,11 +26,13 @@ __global__ void cracker_kernel(char* words, int words_idx, char* hash,
 
     for (int rule_idx = thread_idx; rule_idx < (1 << rules_num); rule_idx += block_dim) {
         char* candidate = new char[100];
-        candidate = word;
+        char* tmp = new char[100];
+        memcpy(candidate, word, word_lengths_pre[block_idx + 1] - word_lengths_pre[block_idx]);
         for (int = 0; i < rules_num; i++){
             if((i << i) & rule_idx){
                 memcpy(rule, rules + i * 100, 100);
-                rules_apply(word, rule, candidate, word_lengths_pre[block_idx + 1] - word_lengths_pre[block_idx]);
+                strncpy(tmp, candidate, 100);
+                rules_apply(tmp, rule, candidate, word_lengths_pre[block_idx + 1] - word_lengths_pre[block_idx]);
             }
         }
         candidate += salt;
