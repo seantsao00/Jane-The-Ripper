@@ -1,14 +1,15 @@
-#include "sha256.h"
-#include "rules.h"
-#include "util.h"
-#include "cracker.h"
-#include <iostream>
 #include <fstream>
+#include <iostream>
+#include <random>
 
-std::string salts[] = {"agr", "beg", "chr", "drg"};
+#include "cracker.h"
+#include "rules.h"
+#include "sha256.h"
+#include "util.h"
 
-int main()
-{
+std::array<std::string, 4> salts = {"agr", "beg", "chr", "drg"};
+
+int main() {
     std::string hashes_filename = "../doc/hashes.txt";
     std::string wordlist_filename = "../doc/wordlist.txt";
     std::string rules_filename = "../doc/rules.txt";
@@ -20,11 +21,9 @@ int main()
     std::vector<std::string> rules;
     std::string word;
     std::string rule;
-    
-    while (std::getline(wordlist_file, word))
-        words.push_back(word);
-    while (std::getline(rules_file, rule))
-        rules.push_back(rule);
+
+    while (std::getline(wordlist_file, word)) words.push_back(word);
+    while (std::getline(rules_file, rule)) rules.push_back(rule);
 
     std::random_device rd;
     std::mt19937 gen1(rd());
@@ -36,13 +35,14 @@ int main()
     std::mt19937 gen3(rd());
     std::uniform_int_distribution<> dist3(0, salts.size() - 1);
 
-    for(int i=0; i<100; i++){
+    for (int i = 0; i < 100; i++) {
         std::string salt = salts[dist3(gen3)];
         std::string complete_string = words[dist1(gen1)] + salt;
         char candidate[100];
-        rules_apply(complete_string.c_str(), rules[dist2(gen2)].c_str(), candidate, complete_string.size());
+        rules_apply_gpu(complete_string.c_str(), rules[dist2(gen2)].c_str(), candidate,
+                    complete_string.size());
         SHA256 ctx;
-        for(int j=0; j < ITERATIONS; j++){
+        for (int j = 0; j < ITERATIONS; j++) {
             sha256(&ctx, reinterpret_cast<BYTE*>(candidate), strlen(candidate));
             memcpy(candidate, ctx.b, 32);
         }
