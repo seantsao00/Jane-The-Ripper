@@ -1,5 +1,5 @@
 HIPCC := hipcc
-HIPCC_FLAGS := -std=c++17 -O3 -Wall -Wextra
+HIPCC_FLAGS := -std=c++17 -O3 -Wall -Wextra -Wno-unused-result
 
 SRC_DIR = src
 BUILD_DIR = build
@@ -15,7 +15,8 @@ $(TARGET): $(OBJ)
 	$(HIPCC) $(HIPCC_FLAGS) $^ -o $@
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
-	$(HIPCC) $(HIPCC_FLAGS) -c $< -o $@
+	@mkdir -p $(BUILD_DIR)
+	$(HIPCC) $(HIPCC_FLAGS) -dc --hip-link -fgpu-rdc -c $< -o $@
 
 clean:
 	rm -f $(BUILD_DIR)/*.o $(TARGET)
