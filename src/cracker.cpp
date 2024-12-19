@@ -26,7 +26,7 @@ __global__ void cracker_kernel(char* words, int words_idx, char* hash,
     memcpy(word, words + word_lengths_pre[words_idx + block_idx], 
         word_lengths_pre[words_idx + block_idx + 1] - word_lengths_pre[words_idx + block_idx]);
 
-    char* rule = new char[100];
+    char* rule = new char[RULE_LEN];
 
     for (int rule_idx = thread_idx; rule_idx < (1 << rules_num); rule_idx += block_dim) {
         char* candidate = new char[100];
@@ -78,8 +78,7 @@ void launch_cracker(std::string hashes_filename, std::string& wordlist_filename,
         word_lengths_pre.push_back(word_lengths_pre.back() + word.size());
     }
 
-    int rules_total_len = std::accumulate(rules.begin(), rules.end(), 0,
-                                          [](int acc, std::string& rule) { return acc + rule.size(); });
+    int rules_total_len = RULE_LEN * RULE_NUM
 
     char* words_ptr = string_vector_to_char_array(words);
     char* rules_ptr = string_vector_to_char_array(rules);
