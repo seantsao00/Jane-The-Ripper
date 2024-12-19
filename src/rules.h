@@ -1,3 +1,5 @@
+#define RULE_NUM 10
+
 #ifndef RULES_H
 #define RULES_H
 
