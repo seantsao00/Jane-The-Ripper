@@ -9,6 +9,7 @@
 
 __host__ __device__ int max_candidate_len = 100;
 
+// Must resize before calling
 __host__ __device__ void rules_apply(const char* word, const char* rule, char* candidate,
                                          int word_len) {
     memcpy(candidate, word, word_len + 1);
@@ -57,7 +58,7 @@ __host__ __device__ void rules_apply(const char* word, const char* rule, char* c
             candidate[candidate_len - i - 1] = tmp;
         }
     } else if (my_strcmp(rule, "d") == 0) {
-        my_strncpy(candidate + candidate_len, candidate, max_candidate_len - candidate_len);
+        my_strncpy(candidate + candidate_len, candidate, std::min(max_candidate_len - candidate_len, candidate_len));
         candidate_len = std::min(max_candidate_len, candidate_len * 2);
     } else if (my_strcmp(rule, "f") == 0) {
         for (int i = 0; i < candidate_len && candidate_len + i < max_candidate_len; i++)
@@ -72,14 +73,14 @@ __host__ __device__ void rules_apply(const char* word, const char* rule, char* c
         for (int i = candidate_len - 1; i > 0; i--) candidate[i] = candidate[i - 1];
         candidate[0] = right_most;
     } else if (my_strcmp(rule, "p") == 0) {
-        printf("candidate: %s\n", candidate);
+        // printf("candidate: %s\n", candidate);
         if (candidate_len > 1) {
             int pos = candidate_len - 1;
             if (my_strchr("sxz", candidate[pos])
                 || (pos > 1 && candidate[pos] == 'h'
                     && (candidate[pos - 1] == 'c' || candidate[pos - 1] == 's'))) {
-                printf("candidate: %s\n", candidate);
-                printf("candidate_len: %d\n", candidate_len);
+                // printf("candidate: %s\n", candidate);
+                // printf("candidate_len: %d\n", candidate_len);
                 my_strcat(candidate, "es");
             } else if (candidate[pos] == 'f' && candidate[pos - 1] != 'f') {
                 my_strcpy(&candidate[pos], "ves");
@@ -92,9 +93,9 @@ __host__ __device__ void rules_apply(const char* word, const char* rule, char* c
                     my_strcpy(&candidate[pos], "ies");
                 }
             } else {
-                printf("candidate: %s\n", candidate);
+                // printf("candidate: %s\n", candidate);
                 my_strcat(candidate, "s");
-                printf("candidate: %s\n", candidate);
+                // printf("candidate: %s\n", candidate);
             }
             candidate_len = my_strlen(candidate);
         }

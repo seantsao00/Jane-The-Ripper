@@ -26,16 +26,17 @@ int main() {
     std::string word;
     std::string rule;
 
-    while (std::getline(wordlist_file, word)) words.push_back(word); 
+    while (std::getline(wordlist_file, word)) words.push_back(word);
     while (std::getline(rules_file, rule)) rules.push_back(rule);
     
     for (int i = 0; i < 100; i++) {
         std::string salt = salts[i%4];
         std::string complete_string = words[i] + salt;
-        std::cout << complete_string << '\n';
+        complete_string.resize(100, '\0');
+        // std::cout << complete_string << '\n';
         char candidate[100];
         char hex[100], tmp[100];
-        rules_apply(complete_string.data(), rules[i%4].data(), candidate,
+        rules_apply(complete_string.data(), rules[i%7].data(), candidate,
                         complete_string.size());
         SHA256 ctx;
         sha256(&ctx, (BYTE*)(candidate), strlen(candidate));

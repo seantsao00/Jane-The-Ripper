@@ -31,45 +31,47 @@ __global__ void cracker_kernel(char* words, int words_offset, char* hash, char* 
 
     char* rule = new char[RULE_LEN];
 
-    // for (int rule_idx = thread_idx; rule_idx < (1 << rules_num); rule_idx += block_dim) {
-    //     char* candidate = new char[100];
-    //     char* tmp = new char[100];
-    //     memcpy(candidate, word, word_lengths_pre[block_idx + 1] - word_lengths_pre[block_idx]);
-    //     for (int i = 0; i < rules_num; i++) {
-    //         if ((i << i) & rule_idx) {
-    //             memcpy(rule, rules + i * 100, 100);
-    //             my_strncpy(tmp, candidate, 100);
-    //             rules_apply(tmp, rule, candidate,
-    //                             word_lengths_pre[block_idx + 1] - word_lengths_pre[block_idx]);
-    //         }
-    //     }
-    //     // candidate += salt;
-    //     my_strcat(candidate, salt);
-    //     SHA256 ctx;
-    //     char* tmp2 = new char[100];
-    //     my_strcpy(tmp2, candidate);
-    //     for (int i = 0; i < ITERATIONS; i++) {
-    //         sha256(&ctx, reinterpret_cast<BYTE*>(tmp2), my_strlen(tmp2));
-    //         tmp2 = reinterpret_cast<char*>(ctx.b);
-    //     }
-    //     if (!my_strcmp(reinterpret_cast<char*>(ctx.b), hash)) {
-    //         memcpy(answer, candidate, my_strlen(candidate));
-    //     }
-    //     delete[] tmp;
-    //     delete[] candidate;
-    // }
-
-    char* candidate = new char[100];
-    memcpy(candidate, word, word_len + 1);
-    my_strcat(candidate, salt);
-    SHA256 ctx;
-    sha256(&ctx, reinterpret_cast<BYTE*>(candidate), my_strlen(candidate));
-    char* tmp = new char[100];
-    memcpy(tmp, reinterpret_cast<char*>(ctx.b), 32);
-    tmp[32] = '\0';
-    if (!my_strcmp(tmp, hash)) {
-        memcpy(answer, candidate, my_strlen(candidate));
+    for (int rule_idx = thread_idx; rule_idx < (1 << rules_num); rule_idx += block_dim) {
+        char* candidate = new char[100];
+        char* tmp = new char[100];
+        int candidate_len = word_lengths_pre[block_idx + 1] - word_lengths_pre[block_idx];
+        memcpy(candidate, word, candidate_len);
+        candidate[candidate_len] = '\0';
+        printf("candidate: %s\n", candidate);
+        for (int i = 0; i < rules_num; i++) {
+            if ((i << i) & rule_idx) {
+                memcpy(rule, rules + i * 100, 100);
+                my_strncpy(tmp, candidate, 100);
+                rules_apply(tmp, rule, candidate,
+                                word_lengths_pre[block_idx + 1] - word_lengths_pre[block_idx]);
+            }
+        }
+        my_strcat(candidate, salt);
+        SHA256 ctx;
+        char* tmp2 = new char[100];
+        my_strcpy(tmp2, candidate);
+        for (int i = 0; i < ITERATIONS; i++) {
+            sha256(&ctx, reinterpret_cast<BYTE*>(tmp2), my_strlen(tmp2));
+            tmp2 = reinterpret_cast<char*>(ctx.b);
+        }
+        if (!my_strcmp(reinterpret_cast<char*>(ctx.b), hash)) {
+            memcpy(answer, candidate, my_strlen(candidate));
+        }
+        delete[] tmp;
+        delete[] candidate;
     }
+
+    // char* candidate = new char[100];
+    // memcpy(candidate, word, word_len + 1);
+    // my_strcat(candidate, salt);
+    // SHA256 ctx;
+    // sha256(&ctx, reinterpret_cast<BYTE*>(candidate), my_strlen(candidate));
+    // char* tmp = new char[100];
+    // memcpy(tmp, reinterpret_cast<char*>(ctx.b), 32);
+    // tmp[32] = '\0';
+    // if (!my_strcmp(tmp, hash)) {
+    //     memcpy(answer, candidate, my_strlen(candidate));
+    // }
 
     delete[] word;
 }
@@ -139,9 +141,9 @@ void launch_cracker(std::string& hashes_filename, std::string& wordlist_filename
     hipMalloc(&d_answer, 100 * sizeof(char));
     hipMalloc(&d_salt, 100 * sizeof(char));
 
-    for (auto pwd : hashes_and_salts) {
-        std::cout << "Hash: " << pwd.first << ", Salt: " << pwd.second << std::endl;
-    }
+    // for (auto pwd : hashes_and_salts) {
+    //     std::cout << "Hash: " << pwd.first << ", Salt: " << pwd.second << std::endl;
+    // }
 
     for (auto pwd : hashes_and_salts) {
         std::string hash = pwd.first;
