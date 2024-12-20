@@ -32,8 +32,8 @@ __host__ __device__ char* my_strcpy(char* dest, const char* src);
 
 __host__ __device__ size_t my_strlen(const char* str);
 
-void hexToAscii(const char *hex, char *ascii);
-
 void utf8ToHex(const char *utf8Str, char *hexOutput);
+
+void utf8ToHex(const char* utf8Str, char* hexOutput);
 
 #endif

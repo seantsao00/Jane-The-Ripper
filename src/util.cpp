@@ -177,22 +177,7 @@ __host__ __device__ size_t my_strlen(const char* str) {
     return len;
 }
 
-void hexToAscii(const char* hex, char* ascii) {
-    size_t len = strlen(hex);
-    if (len % 4 != 0) {
-        printf("Hex string length must be a multiple of 4.");
-        return;
-    }
-
-    for (size_t i = 0; i < len; i += 4) {
-        char byteString[5] = {hex[i], hex[i + 1], hex[i + 2], hex[i + 3], '\0'};
-        int value = static_cast<int>(std::strtol(byteString, nullptr, 16));
-        ascii[i / 4] = static_cast<char>(value);
-    }
-    ascii[len / 4] = '\0';
-}
-
-void utf8ToHex(const char *utf8Str, char *hexOutput) {
+void utf8ToHex(const char* utf8Str, char* hexOutput) {
     size_t len = strlen(utf8Str);
     size_t hexIndex = 0;
 
@@ -203,4 +188,33 @@ void utf8ToHex(const char *utf8Str, char *hexOutput) {
     }
 
     hexOutput[hexIndex] = '\0';
+}
+
+void hexToUtf8(const char* hexStr, char* utf8Output) {
+    size_t len = strlen(hexStr);
+
+    // Ensure the length of the hex string is even
+    if (len % 2 != 0) {
+        fprintf(stderr, "Error: Hex string length must be even.\n");
+        utf8Output[0] = '\0';
+        return;
+    }
+
+    size_t utf8Index = 0;
+
+    for (size_t i = 0; i < len; i += 2) {
+        char hexByte[3] = { hexStr[i], hexStr[i + 1], '\0' };
+
+        // Validate hex characters
+        if (!isxdigit(hexByte[0]) || !isxdigit(hexByte[1])) {
+            fprintf(stderr, "Error: Invalid hex character found.\n");
+            utf8Output[0] = '\0';
+            return;
+        }
+
+        unsigned char byte = (unsigned char)strtol(hexByte, NULL, 16);
+        utf8Output[utf8Index++] = (char)byte;
+    }
+
+    utf8Output[utf8Index] = '\0';
 }
