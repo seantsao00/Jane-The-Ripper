@@ -35,7 +35,7 @@ __global__ void cracker_kernel(char* words, int words_idx, char* hash, char* rul
             if ((i << i) & rule_idx) {
                 memcpy(rule, rules + i * 100, 100);
                 my_strncpy(tmp, candidate, 100);
-                rules_apply_gpu(tmp, rule, candidate,
+                rules_apply(tmp, rule, candidate,
                                 word_lengths_pre[block_idx + 1] - word_lengths_pre[block_idx]);
             }
         }

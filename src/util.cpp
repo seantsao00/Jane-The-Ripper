@@ -176,3 +176,31 @@ __host__ __device__ size_t my_strlen(const char* str) {
 
     return len;
 }
+
+void hexToAscii(const char* hex, char* ascii) {
+    size_t len = strlen(hex);
+    if (len % 4 != 0) {
+        printf("Hex string length must be a multiple of 4.");
+        return;
+    }
+
+    for (size_t i = 0; i < len; i += 4) {
+        char byteString[5] = {hex[i], hex[i + 1], hex[i + 2], hex[i + 3], '\0'};
+        int value = static_cast<int>(std::strtol(byteString, nullptr, 16));
+        ascii[i / 4] = static_cast<char>(value);
+    }
+    ascii[len / 4] = '\0';
+}
+
+void utf8ToHex(const char *utf8Str, char *hexOutput) {
+    size_t len = strlen(utf8Str);
+    size_t hexIndex = 0;
+
+    for (size_t i = 0; i < len; ++i) {
+        unsigned char byte = (unsigned char)utf8Str[i];
+        sprintf(&hexOutput[hexIndex], "%02X", byte);
+        hexIndex += 2;
+    }
+
+    hexOutput[hexIndex] = '\0';
+}

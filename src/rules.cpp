@@ -7,11 +7,11 @@
 
 #include "util.h"
 
-__constant__ int max_candidate_len = 100;
+__host__ __device__ int max_candidate_len = 100;
 
-__host__ __device__ void rules_apply_gpu(const char* word, const char* rule, char* candidate,
+__host__ __device__ void rules_apply(const char* word, const char* rule, char* candidate,
                                          int word_len) {
-    my_strncpy(candidate, word, word_len);
+    memcpy(candidate, word, max_candidate_len);
     candidate[max_candidate_len - 1] = '\0';
     int candidate_len = word_len;
 
