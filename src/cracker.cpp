@@ -31,19 +31,19 @@ __global__ void cracker_kernel(char* words, int words_offset, char* hash, char* 
 
     char* rule = new char[RULE_LEN];
 
-    for (int rule_idx = thread_idx; rule_idx < (1 << rules_num); rule_idx += block_dim) {
+    for (int rule_bit_set = thread_idx; rule_bit_set < (1 << rules_num);
+         rule_bit_set += block_dim) {
         char* candidate = new char[100];
         char* tmp = new char[100];
-        int candidate_len = word_lengths_pre[block_idx + 1] - word_lengths_pre[block_idx];
+        int candidate_len = word_len;
         memcpy(candidate, word, candidate_len);
         candidate[candidate_len] = '\0';
         printf("candidate: %s\n", candidate);
         for (int i = 0; i < rules_num; i++) {
-            if ((i << i) & rule_idx) {
+            if ((1 << i) & rule_bit_set) {
                 memcpy(rule, rules + i * 100, 100);
                 my_strncpy(tmp, candidate, 100);
-                rules_apply(tmp, rule, candidate,
-                                word_lengths_pre[block_idx + 1] - word_lengths_pre[block_idx]);
+                candidate_len = rules_apply(tmp, rule, candidate, candidate_len);
             }
         }
         my_strcat(candidate, salt);
