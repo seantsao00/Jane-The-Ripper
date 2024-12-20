@@ -31,19 +31,19 @@ int main() {
     for (int i = 0; i < 1; i++) {
         std::string salt = salts[i%4];
         std::string complete_string = words[i] + salt;
+        std::cout << complete_string << '\n';
         char candidate[100];
-        char hex[100];
-        printf("%d\n", complete_string.size());
-        rules_apply(complete_string.data(), rules[i%4].c_str(), candidate,
+        char hex[100], tmp[100];
+        rules_apply(complete_string.data(), rules[i%4].data(), candidate,
                         complete_string.size());
-        printf("candidate: %s\n", candidate);
-        utf8ToHex(candidate, hex);
-        printf("hex: %s\n", hex);
         SHA256 ctx;
-        sha256(&ctx, (BYTE*)(hex), strlen(hex));
-        memcpy(hex, ctx.b, 32);
+        sha256(&ctx, (BYTE*)(candidate), strlen(candidate));
+        
+        memcpy(tmp, ctx.b, 32);
+        // tmp[32] = '\0';
         char show[100];
-        hexToAscii(hex, show);
+        utf8ToHex(tmp, show);
         std::cout << show << ":" << salt << '\n';
+        std::cout << "Hash: " << tmp << '\n';
     }
 }
