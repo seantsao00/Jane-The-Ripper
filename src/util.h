@@ -34,6 +34,6 @@ __host__ __device__ size_t my_strlen(const char* str);
 
 void utf8ToHex(const char *utf8Str, char *hexOutput);
 
-void hexToUtf8(const char *hex, char *utf8Output);
+void hexToUtf8(const char* hexStr, char* utf8Output);
 
 #endif

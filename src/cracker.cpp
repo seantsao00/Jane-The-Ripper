@@ -13,47 +13,64 @@
 #include "sha256.h"
 #include "util.h"
 
-__global__ void cracker_kernel(char* words, int words_idx, char* hash, char* rules, int rules_num,
-                               int* word_lengths_pre, char* answer, char* salt) {
+__global__ void cracker_kernel(char* words, int words_offset, char* hash, char* rules,
+                               int rules_num, int* word_lengths_pre, char* answer, char* salt,
+                               int words_num) {
     int block_idx = static_cast<dim3>(blockIdx).x;
     int thread_idx = static_cast<dim3>(threadIdx).x;
     int block_dim = static_cast<dim3>(blockDim).x;
     int grid_dim = static_cast<dim3>(gridDim).x;
 
-    char* word = new char[word_lengths_pre[words_idx + block_idx + 1]
-                          - word_lengths_pre[words_idx + block_idx]];
-    memcpy(word, words + word_lengths_pre[words_idx + block_idx],
-           word_lengths_pre[words_idx + block_idx + 1] - word_lengths_pre[words_idx + block_idx]);
+    if (block_idx + words_offset >= words_num) return;
+
+    int word_len =
+        word_lengths_pre[words_offset + block_idx + 1] - word_lengths_pre[words_offset + block_idx];
+    char* word = new char[word_len + 1];
+    memcpy(word, words + word_lengths_pre[words_offset + block_idx], word_len);
+    word[word_len] = '\0';
 
     char* rule = new char[RULE_LEN];
 
-    for (int rule_idx = thread_idx; rule_idx < (1 << rules_num); rule_idx += block_dim) {
-        char* candidate = new char[100];
-        char* tmp = new char[100];
-        memcpy(candidate, word, word_lengths_pre[block_idx + 1] - word_lengths_pre[block_idx]);
-        for (int i = 0; i < rules_num; i++) {
-            if ((i << i) & rule_idx) {
-                memcpy(rule, rules + i * 100, 100);
-                my_strncpy(tmp, candidate, 100);
-                rules_apply(tmp, rule, candidate,
-                                word_lengths_pre[block_idx + 1] - word_lengths_pre[block_idx]);
-            }
-        }
-        // candidate += salt;
-        my_strcat(candidate, salt);
-        SHA256 ctx;
-        char* tmp2 = new char[100];
-        my_strcpy(tmp2, candidate);
-        for (int i = 0; i < ITERATIONS; i++) {
-            sha256(&ctx, reinterpret_cast<BYTE*>(tmp2), my_strlen(tmp2));
-            tmp2 = reinterpret_cast<char*>(ctx.b);
-        }
-        if (!my_strcmp(reinterpret_cast<char*>(ctx.b), hash)) {
-            memcpy(answer, candidate, my_strlen(candidate));
-        }
-        delete[] tmp;
-        delete[] candidate;
+    // for (int rule_idx = thread_idx; rule_idx < (1 << rules_num); rule_idx += block_dim) {
+    //     char* candidate = new char[100];
+    //     char* tmp = new char[100];
+    //     memcpy(candidate, word, word_lengths_pre[block_idx + 1] - word_lengths_pre[block_idx]);
+    //     for (int i = 0; i < rules_num; i++) {
+    //         if ((i << i) & rule_idx) {
+    //             memcpy(rule, rules + i * 100, 100);
+    //             my_strncpy(tmp, candidate, 100);
+    //             rules_apply(tmp, rule, candidate,
+    //                             word_lengths_pre[block_idx + 1] - word_lengths_pre[block_idx]);
+    //         }
+    //     }
+    //     // candidate += salt;
+    //     my_strcat(candidate, salt);
+    //     SHA256 ctx;
+    //     char* tmp2 = new char[100];
+    //     my_strcpy(tmp2, candidate);
+    //     for (int i = 0; i < ITERATIONS; i++) {
+    //         sha256(&ctx, reinterpret_cast<BYTE*>(tmp2), my_strlen(tmp2));
+    //         tmp2 = reinterpret_cast<char*>(ctx.b);
+    //     }
+    //     if (!my_strcmp(reinterpret_cast<char*>(ctx.b), hash)) {
+    //         memcpy(answer, candidate, my_strlen(candidate));
+    //     }
+    //     delete[] tmp;
+    //     delete[] candidate;
+    // }
+
+    char* candidate = new char[100];
+    memcpy(candidate, word, word_len + 1);
+    my_strcat(candidate, salt);
+    SHA256 ctx;
+    sha256(&ctx, reinterpret_cast<BYTE*>(candidate), my_strlen(candidate));
+    char* tmp = new char[100];
+    memcpy(tmp, reinterpret_cast<char*>(ctx.b), 32);
+    tmp[32] = '\0';
+    if (!my_strcmp(tmp, hash)) {
+        memcpy(answer, candidate, my_strlen(candidate));
     }
+
     delete[] word;
 }
 
@@ -71,7 +88,10 @@ void launch_cracker(std::string& hashes_filename, std::string& wordlist_filename
         if (colon_pos != std::string::npos) {
             std::string hash = line.substr(0, colon_pos);
             std::string salt = line.substr(colon_pos + 1);
-            hashes_and_salts.emplace_back(hash, salt);
+            char* buf = new char[200];
+            // utf8ToHex(hash.c_str(), buf);
+            hexToUtf8(hash.c_str(), buf);
+            hashes_and_salts.emplace_back(std::string(buf), salt);
         } else {
             std::cerr << "Invalid line format: " << line << std::endl;
         }
@@ -120,10 +140,15 @@ void launch_cracker(std::string& hashes_filename, std::string& wordlist_filename
     hipMalloc(&d_salt, 100 * sizeof(char));
 
     for (auto pwd : hashes_and_salts) {
+        std::cout << "Hash: " << pwd.first << ", Salt: " << pwd.second << std::endl;
+    }
+
+    for (auto pwd : hashes_and_salts) {
         std::string hash = pwd.first;
         std::string salt = pwd.second;
         hipMemcpy(d_words, words_ptr, words_total_len * sizeof(char), hipMemcpyHostToDevice);
-        hipMemcpy(d_hash, hash.data(), hash.size() * sizeof(char), hipMemcpyHostToDevice);
+        hipMemcpy(d_hash, hash.c_str(), 32 * sizeof(char), hipMemcpyHostToDevice);
+        hipMemset(d_hash + 32, '\0', 1);
         hipMemcpy(d_rules, rules_ptr, rules_total_len * sizeof(char), hipMemcpyHostToDevice);
         hipMemcpy(d_word_lengths_pre, word_lengths_pre.data(),
                   word_lengths_pre.size() * sizeof(int), hipMemcpyHostToDevice);
@@ -134,10 +159,12 @@ void launch_cracker(std::string& hashes_filename, std::string& wordlist_filename
         while (words_idx < words_num) {
             hipLaunchKernelGGL(cracker_kernel, dim3(BLOCKS_PER_GRID), dim3(THREADS_PER_BLOCK), 0, 0,
                                d_words, words_idx, d_hash, d_rules, rules.size(),
-                               d_word_lengths_pre, d_answer, d_salt);
+                               d_word_lengths_pre, d_answer, d_salt, words_num);
             hipMemcpy(answer_ptr, d_answer, 100 * sizeof(char), hipMemcpyDeviceToHost);
             if (answer_ptr[0] != '\0') {
-                std::cout << "Found password: " << answer_ptr << std::endl;
+                // std::cout << "Found password: " << answer_ptr << std::endl;
+                std::string answer(answer_ptr, my_strlen(answer_ptr) - salt.size());
+                std::cout << "Found password: " << answer << std::endl;
                 break;
             }
             words_idx += BLOCKS_PER_GRID;
