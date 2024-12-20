@@ -32,7 +32,7 @@ __host__ __device__ char* my_strcpy(char* dest, const char* src);
 
 __host__ __device__ size_t my_strlen(const char* str);
 
-void utf8ToHex(const char *utf8Str, char *hexOutput);
+void utf8ToHex(const char *utf8Str, char *hexOutput, int len);
 
 void hexToUtf8(const char* hexStr, char* utf8Output);
 

@@ -177,8 +177,7 @@ __host__ __device__ size_t my_strlen(const char* str) {
     return len;
 }
 
-void utf8ToHex(const char* utf8Str, char* hexOutput) {
-    size_t len = strlen(utf8Str);
+void utf8ToHex(const char* utf8Str, char* hexOutput, const int len) {
     size_t hexIndex = 0;
 
     for (size_t i = 0; i < len; ++i) {

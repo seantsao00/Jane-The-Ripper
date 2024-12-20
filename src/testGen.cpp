@@ -19,6 +19,7 @@ int main() {
 
     std::ifstream wordlist_file(wordlist_filename);
     std::ifstream rules_file(rules_filename);
+    std::ofstream hashes_file(hashes_filename);
 
     std::vector<std::string> words;
     std::vector<std::string> rules;
@@ -28,7 +29,7 @@ int main() {
     while (std::getline(wordlist_file, word)) words.push_back(word); 
     while (std::getline(rules_file, rule)) rules.push_back(rule);
     
-    for (int i = 0; i < 1; i++) {
+    for (int i = 0; i < 100; i++) {
         std::string salt = salts[i%4];
         std::string complete_string = words[i] + salt;
         std::cout << complete_string << '\n';
@@ -40,10 +41,14 @@ int main() {
         sha256(&ctx, (BYTE*)(candidate), strlen(candidate));
         
         memcpy(tmp, ctx.b, 32);
-        // tmp[32] = '\0';
+        tmp[32] = '\0';
         char show[100];
-        utf8ToHex(tmp, show);
-        std::cout << show << ":" << salt << '\n';
-        std::cout << "Hash: " << tmp << '\n';
+        utf8ToHex(tmp, show, 32);
+
+        for (int i = 0; show[i]; i++)
+            if(isalpha(show[i]))
+                show[i] = tolower((unsigned char)show[i]);
+
+        hashes_file << show << ":" << salt << '\n';
     }
 }
