@@ -1,7 +1,14 @@
 l
+u
 r
+c
 d
 C
+T 10
 p
 t
 A 0 a
+{
+p
+I
+P
