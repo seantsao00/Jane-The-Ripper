@@ -37,7 +37,6 @@ __global__ void cracker_kernel(char* words, int words_offset, char* hash, char* 
         int candidate_len = word_lengths_pre[block_idx + 1] - word_lengths_pre[block_idx];
         memcpy(candidate, word, candidate_len);
         candidate[candidate_len] = '\0';
-        printf("candidate: %s\n", candidate);
         for (int i = 0; i < rules_num; i++) {
             if ((i << i) & rule_idx) {
                 memcpy(rule, rules + i * 100, 100);

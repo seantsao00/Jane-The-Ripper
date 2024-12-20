@@ -1,6 +1,8 @@
 #ifndef CRACKER_H
 #define CRACKER_H
 
+#include <hip/hip_runtime.h>
+
 #define THREADS_PER_BLOCK 256
 #define BLOCKS_PER_GRID 2048
 #define ITERATIONS 1
