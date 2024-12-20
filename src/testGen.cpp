@@ -1,4 +1,5 @@
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <random>
 #include <string>
@@ -36,24 +37,22 @@ int main() {
     int num_words = words.size();
     
     for (int i = 0; i < 100; i++) {
-        std::string salt = salts[i%4];
-        std::string complete_string = words[i%num_words] + salt;
+        std::string salt = salts[i % 4];
+        std::string complete_string = words[i] + salt;
         complete_string.resize(100, '\0');
         char candidate[100];
         char hex[100], tmp[100];
-        rules_apply(complete_string.data(), rules[i%num_rules].data(), candidate,
-                        complete_string.size());
+        rules_apply(complete_string.data(), rules[i % 7].data(), candidate, complete_string.size());
         SHA256 ctx;
         sha256(&ctx, (BYTE*)(candidate), strlen(candidate));
-        
+
         memcpy(tmp, ctx.b, 32);
         tmp[32] = '\0';
         char show[100];
         utf8ToHex(tmp, show, 32);
 
         for (int i = 0; show[i]; i++)
-            if(isalpha(show[i]))
-                show[i] = tolower((unsigned char)show[i]);
+            if (isalpha(show[i])) show[i] = tolower((unsigned char)show[i]);
 
         hashes_file << show << ":" << salt << '\n';
     }

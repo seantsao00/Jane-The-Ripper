@@ -10,8 +10,8 @@
 __host__ __device__ int max_candidate_len = 100;
 
 // Must resize before calling
-__host__ __device__ void rules_apply(const char* word, const char* rule, char* candidate,
-                                         int word_len) {
+__host__ __device__ int rules_apply(const char* word, const char* rule, char* candidate,
+                                     int word_len) {
     memcpy(candidate, word, word_len + 1);
     candidate[max_candidate_len - 1] = '\0';
     int candidate_len = word_len;
@@ -58,7 +58,8 @@ __host__ __device__ void rules_apply(const char* word, const char* rule, char* c
             candidate[candidate_len - i - 1] = tmp;
         }
     } else if (my_strcmp(rule, "d") == 0) {
-        my_strncpy(candidate + candidate_len, candidate, std::min(max_candidate_len - candidate_len, candidate_len));
+        my_strncpy(candidate + candidate_len, candidate,
+                   std::min(max_candidate_len - candidate_len, candidate_len));
         candidate_len = std::min(max_candidate_len, candidate_len * 2);
     } else if (my_strcmp(rule, "f") == 0) {
         for (int i = 0; i < candidate_len && candidate_len + i < max_candidate_len; i++)
@@ -155,4 +156,6 @@ __host__ __device__ void rules_apply(const char* word, const char* rule, char* c
             candidate_len = my_strlen(candidate);
         }
     }
+
+    return candidate_len;
 }
