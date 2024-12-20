@@ -38,11 +38,14 @@ int main() {
     
     for (int i = 0; i < 100; i++) {
         std::string salt = salts[i % 4];
-        std::string complete_string = words[i] + salt;
+        std::string complete_string = words[i*1000] + salt;
+        int sz = complete_string.size();
         complete_string.resize(100, '\0');
         char candidate[100];
         char hex[100], tmp[100];
-        rules_apply(complete_string.data(), rules[i % 7].data(), candidate, complete_string.size());
+        // std::cout << "complete string: " << complete_string << std::endl;
+        rules_apply(complete_string.data(), rules[i % 2].c_str(), candidate, complete_string.size());
+        // printf("candidate: %s\n", candidate);
         SHA256 ctx;
         sha256(&ctx, (BYTE*)(candidate), strlen(candidate));
 

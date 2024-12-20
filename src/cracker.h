@@ -3,8 +3,8 @@
 
 #include <hip/hip_runtime.h>
 
-#define THREADS_PER_BLOCK 256
-#define BLOCKS_PER_GRID 2048
+#define THREADS_PER_BLOCK 512
+#define BLOCKS_PER_GRID 4096
 #define ITERATIONS 1
 
 __global__ void cracker_kernel(char* words, int words_idx, char* hash, char* rules, int rules_num,

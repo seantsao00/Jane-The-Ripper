@@ -29,12 +29,13 @@ __global__ void cracker_kernel(char* words, int words_offset, char* hash, char* 
     memcpy(word, words + word_lengths_pre[words_offset + block_idx], word_len);
     word[word_len] = '\0';
 
-    char* rule = new char[RULE_LEN];
+    char rule[RULE_LEN];
+    char candidate[100];
+    char tmp[100];
+    char tmp2[100];
 
     for (int rule_bit_set = thread_idx; rule_bit_set < (1 << rules_num);
          rule_bit_set += block_dim) {
-        char* candidate = new char[100];
-        char* tmp = new char[100];
         int candidate_len = word_len;
         memcpy(candidate, word, candidate_len);
         candidate[candidate_len] = '\0';
@@ -45,19 +46,20 @@ __global__ void cracker_kernel(char* words, int words_offset, char* hash, char* 
                 candidate_len = rules_apply(tmp, rule, candidate, candidate_len);
             }
         }
+        candidate[candidate_len] = '\0';
         my_strcat(candidate, salt);
+        candidate[candidate_len+3] = '\0';
+        // printf("rule: %s\n", rule);
+        // printf("%d candidate: %s\n", candidate_len+3, candidate);
         SHA256 ctx;
-        char* tmp2 = new char[100];
         my_strcpy(tmp2, candidate);
         for (int i = 0; i < ITERATIONS; i++) {
             sha256(&ctx, reinterpret_cast<BYTE*>(tmp2), my_strlen(tmp2));
-            tmp2 = reinterpret_cast<char*>(ctx.b);
+            memcpy(tmp2, reinterpret_cast<char*>(ctx.b), 64);
         }
         if (!my_strcmp(reinterpret_cast<char*>(ctx.b), hash)) {
             memcpy(answer, candidate, my_strlen(candidate));
         }
-        delete[] tmp;
-        delete[] candidate;
     }
 
     // char* candidate = new char[100];
@@ -143,8 +145,10 @@ void launch_cracker(std::string& hashes_filename, std::string& wordlist_filename
     // for (auto pwd : hashes_and_salts) {
     //     std::cout << "Hash: " << pwd.first << ", Salt: " << pwd.second << std::endl;
     // }
+    int hash_idx = 0;
 
     for (auto pwd : hashes_and_salts) {
+        
         std::string hash = pwd.first;
         std::string salt = pwd.second;
         hipMemcpy(d_words, words_ptr, words_total_len * sizeof(char), hipMemcpyHostToDevice);
@@ -156,19 +160,33 @@ void launch_cracker(std::string& hashes_filename, std::string& wordlist_filename
         hipMemcpy(d_answer, answer_ptr, 100 * sizeof(char), hipMemcpyHostToDevice);
         hipMemcpy(d_salt, salt.c_str(), 100 * sizeof(char), hipMemcpyHostToDevice);
 
+        int total_ker = 0, total_mem = 0;
         int words_idx = 0;
+        printf("hash_idx: %d\n", hash_idx);
         while (words_idx < words_num) {
+            auto start = std::chrono::high_resolution_clock::now();
             hipLaunchKernelGGL(cracker_kernel, dim3(BLOCKS_PER_GRID), dim3(THREADS_PER_BLOCK), 0, 0,
                                d_words, words_idx, d_hash, d_rules, rules.size(),
                                d_word_lengths_pre, d_answer, d_salt, words_num);
+            hipDeviceSynchronize();
+            auto end = std::chrono::high_resolution_clock::now();
             hipMemcpy(answer_ptr, d_answer, 100 * sizeof(char), hipMemcpyDeviceToHost);
+            auto end1 = std::chrono::high_resolution_clock::now();
+            total_ker += std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+            total_mem += std::chrono::duration_cast<std::chrono::milliseconds>(end1 - end).count();
             if (answer_ptr[0] != '\0') {
                 // std::cout << "Found password: " << answer_ptr << std::endl;
                 std::string answer(answer_ptr, my_strlen(answer_ptr) - salt.size());
-                std::cout << "Found password: " << answer << std::endl;
+                std::cout << "In " << hash_idx << "-th hash, Found password: " << answer << std::endl;
+                memset(answer_ptr, '\0', 100);
+                hipMemcpy(d_answer, answer_ptr, 100 * sizeof(char), hipMemcpyHostToDevice);
                 break;
             }
             words_idx += BLOCKS_PER_GRID;
+            // printf("words_idx: %d\n", words_idx);
         }
+        std::cout << "Total kernel time: " << total_ker << " ms" << std::endl;
+        std::cout << "Total memory time: " << total_mem << " ms" << std::endl;
+        hash_idx++;
     }
 }

@@ -52,10 +52,11 @@ __host__ __device__ int rules_apply(const char* word, const char* rule, char* ca
             }
         }
     } else if (my_strcmp(rule, "r") == 0) {
-        for (int i = 0; i < candidate_len / 2; i++) {
+        size_t length = my_strlen(candidate);
+        for (int i = 0; i < length / 2; i++) {
             char tmp = candidate[i];
-            candidate[i] = candidate[candidate_len - i - 1];
-            candidate[candidate_len - i - 1] = tmp;
+            candidate[i] = candidate[length - i - 1];
+            candidate[length - i - 1] = tmp;
         }
     } else if (my_strcmp(rule, "d") == 0) {
         my_strncpy(candidate + candidate_len, candidate,
